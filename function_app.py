@@ -29,7 +29,7 @@ def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
         server = "smartfinance-server.database.windows.net"
         database = "finance-db" 
         username = "smartfinance"
-        password = "Dbpassword123"
+        password = "DBpassword123"
 
         # Connection string
         connection_string = (
@@ -46,7 +46,7 @@ def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
         # Connect to database and insert transaction
         with pyodbc.connect(connection_string) as conn:
             with conn.cursor() as cursor:
-                # Create transactions table if not exists
+                # Create transactions table if not exists - COM TODAS AS COLUNAS CORRETAS
                 cursor.execute("""
                     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='transactions' AND xtype='U')
                     CREATE TABLE transactions (
@@ -54,15 +54,23 @@ def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
                         amount DECIMAL(10,2) NOT NULL,
                         description NVARCHAR(255) NOT NULL,
                         type NVARCHAR(50) NOT NULL,
-                        created_at DATETIME DEFAULT GETDATE()
+                        category NVARCHAR(100),
+                        merchant_name NVARCHAR(100),
+                        date DATETIME DEFAULT GETDATE()
                     )
                 """)
                 
-                # Insert transaction
+                # Insert transaction - APENAS COM COLUNAS QUE EXISTEM
                 cursor.execute("""
-                    INSERT INTO transactions (amount, description, type)
-                    VALUES (?, ?, ?)
-                """, req_body["amount"], req_body["description"], req_body["type"])
+                    INSERT INTO transactions (amount, description, type, category, merchant_name)
+                    VALUES (?, ?, ?, ?, ?)
+                """,  
+                req_body["amount"], 
+                req_body["description"], 
+                req_body["type"],
+                req_body.get("category"),  # .get() para campos opcionais
+                req_body.get("merchant_name")  # .get() para campos opcionais
+                )
                 
                 conn.commit()
 
@@ -94,7 +102,7 @@ def get_transactions(req: func.HttpRequest) -> func.HttpResponse:
         server = "smartfinance-server.database.windows.net"
         database = "finance-db"
         username = "smartfinance"
-        password = "Dbpassword123"
+        password = "DBpassword123"
 
         connection_string = (
             f"Driver={{ODBC Driver 18 for SQL Server}};"
@@ -109,7 +117,8 @@ def get_transactions(req: func.HttpRequest) -> func.HttpResponse:
 
         with pyodbc.connect(connection_string) as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT * FROM transactions ORDER BY created_at DESC")
+                # SELECT com as colunas CORRETAS - usando 'date' em vez de 'created_at'
+                cursor.execute("SELECT id, amount, description, type, category, merchant_name, date FROM transactions ORDER BY date DESC")
                 rows = cursor.fetchall()
                 
                 transactions = []
@@ -119,7 +128,9 @@ def get_transactions(req: func.HttpRequest) -> func.HttpResponse:
                         "amount": float(row[1]),
                         "description": row[2],
                         "type": row[3],
-                        "created_at": row[4].isoformat() if row[4] else None
+                        "category": row[4],
+                        "merchant_name": row[5],
+                        "date": row[6].isoformat() if row[6] else None
                     })
 
         return func.HttpResponse(
