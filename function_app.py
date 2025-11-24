@@ -1,18 +1,22 @@
 import azure.functions as func
 import pyodbc
 import json
-from datetime import datetime
+import logging
 
 app = func.FunctionApp()
 
-@app.route(route="transactions", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
+@app.function_name(name="ProcessTransaction")
+@app.route(route="transactions", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+    
     try:
         # Get transaction data from request body
         req_body = req.get_json()
+        logging.info(f'Received data: {req_body}')
         
         # Validate required fields
-        required_fields = ["amount", "description", "type"]  # type: 'income' or 'expense'
+        required_fields = ["amount", "description", "type"]
         for field in required_fields:
             if field not in req_body:
                 return func.HttpResponse(
@@ -73,14 +77,18 @@ def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
+        logging.error(f'Error: {str(e)}')
         return func.HttpResponse(
             json.dumps({"status": "error", "message": str(e)}),
             status_code=500,
             mimetype="application/json"
         )
 
-@app.route(route="transactions", auth_level=func.AuthLevel.ANONYMOUS, methods=["GET"])
+@app.function_name(name="GetTransactions")
+@app.route(route="transactions", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def get_transactions(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a GET request.')
+    
     try:
         # Your SQL Database credentials
         server = "smartfinance-server.database.windows.net"
@@ -121,6 +129,7 @@ def get_transactions(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
+        logging.error(f'Error: {str(e)}')
         return func.HttpResponse(
             json.dumps({"status": "error", "message": str(e)}),
             status_code=500,
