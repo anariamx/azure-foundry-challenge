@@ -19,32 +19,42 @@ graph TB
     B --> D[Web Search]
     C --> E[SQL Database]
     E --> F[Transações]
-
+```
 ## 📋 Tecnologias
-- Azure AI Foundry - Plataforma do agente
 
-- Azure SQL Database - Armazenamento de transações
+- Azure AI Foundry: Plataforma do agente
 
-- Azure AI Search - Indexação e busca de dados
+- Azure SQL Database: Armazenamento de transações
 
-- Python - Azure Functions (histórico)
+- Azure AI Search: Indexação e busca de dados
+
+- Python: Azure Functions (histórico)
 
 ## Como usar
-```"mostre minhas transações recentes"
+
+```
+
+"mostre minhas transações recentes"
 "quanto gastei com alimentação?"
 "qual meu saldo atual?"
 "dicas para economizar dinheiro"
 "melhores investimentos para 2024"
+
 ```
+
 ## 🔧 Configuração
 Agent: SmartFinance
+
 Tools:
+
 - Azure AI Search (transactions-index)
 - Web Search Preview
 - Model: GPT-4.1-mini
 
 ### System Prompt:
+
 ```
+
 Você é um assistente financeiro inteligente. Use as ferramentas disponíveis para:
 
 📊 PARA SEUS DADOS PESSOAIS (transações, gastos, saldo):
@@ -65,6 +75,7 @@ Seja útil e direto nas respostas!
 ```
 
 ### 📊 Dados de Exemplo
+
 O banco inclui transações realistas cobrindo:
 
 💰 Receitas: Salários (R$ 3.500), freelances (R$ 450)
@@ -86,7 +97,9 @@ Saúde: farmácia, consultas, academia
 🎯 Saldo: R$ 1.467,75 positivo
 
 ## 🚀 Deployment
+
 ### Azure Resources Utilizados:
+
 - Resource Group: rg-azure-foundry
 - AI Foundry Project: smartfinance
 - SQL Database: finance-db em smartfinance-server
@@ -94,10 +107,8 @@ Saúde: farmácia, consultas, academia
 - Azure Functions: mcp-smartfinance (para integrações futuras)
 
 ### Configuração do Ambiente:
+
 - Azure AI Foundry: Crie um novo projeto
-
 - SQL Database: Configure com as credenciais apropriadas
-
 - AI Search: Indexe a tabela de transações
-
 - Agent: Configure com as tools de search e web search
