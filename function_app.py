@@ -311,3 +311,35 @@ def health_check(req: func.HttpRequest) -> func.HttpResponse:
         status_code=200,
         mimetype="application/json"
     )
+
+@app.function_name(name="MCPMetadata")
+@app.route(route="mcp/metadata", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def mcp_metadata(req: func.HttpRequest):
+    schema = {
+        "type": "object",
+        "title": "SmartFinanceTools",
+        "description": "Ferramentas usadas pelo agente financeiro para registrar e consultar transações.",
+        "properties": {
+            "addTransaction": {
+                "type": "object",
+                "description": "Adiciona uma nova transação ao sistema.",
+                "properties": {
+                    "amount": { "type": "number" },
+                    "description": { "type": "string" },
+                    "type": { "type": "string", "enum": ["despesa", "receita"] },
+                    "category": { "type": "string" }
+                },
+                "required": ["amount", "description", "type"]
+            },
+            "getTransactions": {
+                "type": "object",
+                "description": "Retorna todas as transações registradas."
+            }
+        }
+    }
+
+    return func.HttpResponse(
+        json.dumps(schema),
+        mimetype="application/json",
+        status_code=200
+    )

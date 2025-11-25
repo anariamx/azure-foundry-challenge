@@ -112,3 +112,7 @@ Saúde: farmácia, consultas, academia
 - SQL Database: Configure com as credenciais apropriadas
 - AI Search: Indexe a tabela de transações
 - Agent: Configure com as tools de search e web search
+
+## Passo a passo
+
+[MCP server](/passos/MCP.md)
