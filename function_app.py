@@ -1,11 +1,12 @@
 import azure.functions as func
+from azure.functions import HttpRequest, HttpResponse
 import pyodbc
 import json
 import logging
 import requests
 import os
 import re
-from keys import AGENT_ENDPOINT, AGENT_API_KEY, AGENT_ID
+from keys import AGENT_ENDPOINT, AGENT_API_KEY, AGENT_ID, ULTRAMSG_INSTANCE_ID, ULTRAMSG_TOKEN
 
 app = func.FunctionApp()
 
@@ -197,149 +198,220 @@ def get_transactions(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
 
-@app.function_name(name="AgentWebhook")
-@app.route(route="agent-webhook", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
-def agent_webhook(req: func.HttpRequest) -> func.HttpResponse:
-    """Webhook que o Agent chama quando precisa executar ações"""
-    try:
-        req_body = req.get_json()
-        user_message = req_body.get("message", "")
-        
-        logging.info(f"Agent webhook received: {user_message}")
-        
-        # Analisar a mensagem do usuário para determinar a ação
-        if any(word in user_message.lower() for word in ['gastei', 'paguei', 'recebi', 'comprei']):
-            # Extrair dados da mensagem natural
-            transaction_data = extract_transaction_data(user_message)
-            
-            if not transaction_data["amount"]:
-                return func.HttpResponse(
-                    json.dumps({
-                        "status": "error", 
-                        "message": "Não consegui identificar o valor da transação. Formato esperado: 'gastei 50 no ifood'"
-                    }),
-                    status_code=400,
-                    mimetype="application/json"
-                )
-            
-            # Processar transação com dados extraídos
-            with get_db_connection() as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute("""
-                        INSERT INTO transactions (amount, description, type, category)
-                        VALUES (?, ?, ?, ?)
-                    """,  
-                    transaction_data["amount"], 
-                    transaction_data["description"], 
-                    transaction_data["type"],
-                    transaction_data["category"]
-                    )
-                    conn.commit()
-            
-            response_data = {
-                "status": "success",
-                "action": "transaction_added", 
-                "message": f"Transação de {transaction_data['type']} no valor de R$ {transaction_data['amount']} adicionada com sucesso!",
-                "transaction": transaction_data
-            }
-            
-        elif any(word in user_message.lower() for word in ['saldo', 'transações', 'extrato', 'histórico']):
-            # Buscar transações do banco
-            with get_db_connection() as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute("SELECT amount, type FROM transactions ORDER BY date DESC LIMIT 20")
-                    rows = cursor.fetchall()
-                    
-                    transactions = []
-                    balance = 0
-                    for row in rows:
-                        amount = float(row[0])
-                        trans_type = row[1]
-                        
-                        if trans_type == "receita":
-                            balance += amount
-                        else:
-                            balance -= amount
-                        
-                        transactions.append({
-                            "amount": amount,
-                            "type": trans_type
-                        })
-            
-            response_data = {
-                "status": "success", 
-                "action": "transactions_retrieved",
-                "message": f"Saldo atual: R$ {balance:.2f}",
-                "balance": balance,
-                "transactions_count": len(transactions)
-            }
-        else:
-            response_data = {
-                "status": "info",
-                "message": "Comando não reconhecido. Use: 'gastei X no Y', 'recebi X de Y' ou 'qual meu saldo?'"
-            }
+@app.function_name(name="whatsappWebhook")
+@app.route(route="whatsappWebhook", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def whatsapp_webhook(req: HttpRequest) -> HttpResponse:
+    logging.info("WhatsApp webhook triggered.")
 
-        return func.HttpResponse(
-            json.dumps(response_data, ensure_ascii=False),
-            status_code=200,
-            mimetype="application/json"
+    try:
+        # Parse incoming request
+        raw_body = req.get_body()
+        body = json.loads(raw_body.decode("utf-8"))
+
+        message_text = body.get("body")
+        sender = body.get("from")
+
+        if not message_text or not sender:
+            logging.error("Missing fields in webhook request")
+            return HttpResponse("Invalid payload", status_code=400)
+
+        logging.info(f"Mensagem recebida: {message_text} de {sender}")
+
+        # -------------------------------------------------------
+        # CALL THE AI FOUNDRY AGENT
+        # -------------------------------------------------------
+        AI_ENDPOINT = AGENT_ENDPOINT 
+        # + f"/openai/deployments/{AGENT_ID}/chat/completions?api-version=2024-02-01"
+        AI_KEY = AGENT_API_KEY
+
+        payload = {
+            "messages": [
+                {"role": "user", "content": message_text}
+            ]
+        }
+
+        ai_response = requests.post(
+            AI_ENDPOINT,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {AI_KEY}"
+            },
+            json=payload
         )
+
+        if ai_response.status_code >= 300:
+            logging.error(f"AI Agent error: {ai_response.text}")
+            return HttpResponse("Agent error", status_code=500)
+
+        agent_answer = ai_response.json().get("output", {}).get("message", "Não consegui gerar uma resposta.")
+
+        logging.info(f"Resposta do agente: {agent_answer}")
+
+        # -------------------------------------------------------
+        # SEND BACK MESSAGE TO WHATSAPP (Ultramsg API)
+        # -------------------------------------------------------
+
+        whatsapp_api_url = f"https://api.ultramsg.com/{ULTRAMSG_INSTANCE}/messages/chat"
+
+        whatsapp_payload = {
+            "token": ULTRAMSG_TOKEN,
+            "to": sender.replace("@c.us", ""),  # remove @c.us if present
+            "body": agent_answer
+        }
+
+        send_resp = requests.post(whatsapp_api_url, data=whatsapp_payload)
+
+        logging.info(f"Resposta enviada ao WhatsApp: {send_resp.text}")
+
+        return HttpResponse("OK", status_code=200)
 
     except Exception as e:
-        logging.error(f'Webhook error: {str(e)}')
-        return func.HttpResponse(
-            json.dumps({"status": "error", "message": str(e)}),
-            status_code=500,
-            mimetype="application/json"
-        )
+        logging.exception("Erro no webhook")
+        return HttpResponse(str(e), status_code=500)
 
-@app.function_name(name="HealthCheck")
-@app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
-def health_check(req: func.HttpRequest) -> func.HttpResponse:
-    """Endpoint de health check"""
-    return func.HttpResponse(
-        json.dumps({
-            "status": "healthy",
-            "service": "SmartFinance API",
-            "endpoints": {
-                "POST /api/transactions": "Adicionar transação",
-                "GET /api/transactions": "Listar transações", 
-                "POST /api/agent-webhook": "Webhook para agentes",
-                "GET /api/health": "Health check"
-            }
-        }),
-        status_code=200,
-        mimetype="application/json"
-    )
+# @app.function_name(name="AgentWebhook")
+# @app.route(route="agent-webhook", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+# def agent_webhook(req: func.HttpRequest) -> func.HttpResponse:
+#     """Webhook que o Agent chama quando precisa executar ações"""
+#     try:
+#         req_body = req.get_json()
+#         user_message = req_body.get("message", "")
+        
+#         logging.info(f"Agent webhook received: {user_message}")
+        
+#         # Analisar a mensagem do usuário para determinar a ação
+#         if any(word in user_message.lower() for word in ['gastei', 'paguei', 'recebi', 'comprei']):
+#             # Extrair dados da mensagem natural
+#             transaction_data = extract_transaction_data(user_message)
+            
+#             if not transaction_data["amount"]:
+#                 return func.HttpResponse(
+#                     json.dumps({
+#                         "status": "error", 
+#                         "message": "Não consegui identificar o valor da transação. Formato esperado: 'gastei 50 no ifood'"
+#                     }),
+#                     status_code=400,
+#                     mimetype="application/json"
+#                 )
+            
+#             # Processar transação com dados extraídos
+#             with get_db_connection() as conn:
+#                 with conn.cursor() as cursor:
+#                     cursor.execute("""
+#                         INSERT INTO transactions (amount, description, type, category)
+#                         VALUES (?, ?, ?, ?)
+#                     """,  
+#                     transaction_data["amount"], 
+#                     transaction_data["description"], 
+#                     transaction_data["type"],
+#                     transaction_data["category"]
+#                     )
+#                     conn.commit()
+            
+#             response_data = {
+#                 "status": "success",
+#                 "action": "transaction_added", 
+#                 "message": f"Transação de {transaction_data['type']} no valor de R$ {transaction_data['amount']} adicionada com sucesso!",
+#                 "transaction": transaction_data
+#             }
+            
+#         elif any(word in user_message.lower() for word in ['saldo', 'transações', 'extrato', 'histórico']):
+#             # Buscar transações do banco
+#             with get_db_connection() as conn:
+#                 with conn.cursor() as cursor:
+#                     cursor.execute("SELECT amount, type FROM transactions ORDER BY date DESC LIMIT 20")
+#                     rows = cursor.fetchall()
+                    
+#                     transactions = []
+#                     balance = 0
+#                     for row in rows:
+#                         amount = float(row[0])
+#                         trans_type = row[1]
+                        
+#                         if trans_type == "receita":
+#                             balance += amount
+#                         else:
+#                             balance -= amount
+                        
+#                         transactions.append({
+#                             "amount": amount,
+#                             "type": trans_type
+#                         })
+            
+#             response_data = {
+#                 "status": "success", 
+#                 "action": "transactions_retrieved",
+#                 "message": f"Saldo atual: R$ {balance:.2f}",
+#                 "balance": balance,
+#                 "transactions_count": len(transactions)
+#             }
+#         else:
+#             response_data = {
+#                 "status": "info",
+#                 "message": "Comando não reconhecido. Use: 'gastei X no Y', 'recebi X de Y' ou 'qual meu saldo?'"
+#             }
 
-@app.function_name(name="MCPMetadata")
-@app.route(route="mcp/metadata", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
-def mcp_metadata(req: func.HttpRequest):
-    schema = {
-        "type": "object",
-        "title": "SmartFinanceTools",
-        "description": "Ferramentas usadas pelo agente financeiro para registrar e consultar transações.",
-        "properties": {
-            "addTransaction": {
-                "type": "object",
-                "description": "Adiciona uma nova transação ao sistema.",
-                "properties": {
-                    "amount": { "type": "number" },
-                    "description": { "type": "string" },
-                    "type": { "type": "string", "enum": ["despesa", "receita"] },
-                    "category": { "type": "string" }
-                },
-                "required": ["amount", "description", "type"]
-            },
-            "getTransactions": {
-                "type": "object",
-                "description": "Retorna todas as transações registradas."
-            }
-        }
-    }
+#         return func.HttpResponse(
+#             json.dumps(response_data, ensure_ascii=False),
+#             status_code=200,
+#             mimetype="application/json"
+#         )
 
-    return func.HttpResponse(
-        json.dumps(schema),
-        mimetype="application/json",
-        status_code=200
-    )
+#     except Exception as e:
+#         logging.error(f'Webhook error: {str(e)}')
+#         return func.HttpResponse(
+#             json.dumps({"status": "error", "message": str(e)}),
+#             status_code=500,
+#             mimetype="application/json"
+#         )
+
+# @app.function_name(name="HealthCheck")
+# @app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+# def health_check(req: func.HttpRequest) -> func.HttpResponse:
+#     """Endpoint de health check"""
+#     return func.HttpResponse(
+#         json.dumps({
+#             "status": "healthy",
+#             "service": "SmartFinance API",
+#             "endpoints": {
+#                 "POST /api/transactions": "Adicionar transação",
+#                 "GET /api/transactions": "Listar transações", 
+#                 "POST /api/agent-webhook": "Webhook para agentes",
+#                 "GET /api/health": "Health check"
+#             }
+#         }),
+#         status_code=200,
+#         mimetype="application/json"
+#     )
+
+# @app.function_name(name="MCPMetadata")
+# @app.route(route="mcp/metadata", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+# def mcp_metadata(req: func.HttpRequest):
+#     schema = {
+#         "type": "object",
+#         "title": "SmartFinanceTools",
+#         "description": "Ferramentas usadas pelo agente financeiro para registrar e consultar transações.",
+#         "properties": {
+#             "addTransaction": {
+#                 "type": "object",
+#                 "description": "Adiciona uma nova transação ao sistema.",
+#                 "properties": {
+#                     "amount": { "type": "number" },
+#                     "description": { "type": "string" },
+#                     "type": { "type": "string", "enum": ["despesa", "receita"] },
+#                     "category": { "type": "string" }
+#                 },
+#                 "required": ["amount", "description", "type"]
+#             },
+#             "getTransactions": {
+#                 "type": "object",
+#                 "description": "Retorna todas as transações registradas."
+#             }
+#         }
+#     }
+
+#     return func.HttpResponse(
+#         json.dumps(schema),
+#         mimetype="application/json",
+#         status_code=200
+#     )
