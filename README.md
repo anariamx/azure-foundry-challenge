@@ -1,6 +1,6 @@
 # SmartFinance – Agente Financeiro Autônomo
 
-🧠 **Visão Geral**
+## 🧠 **Visão Geral**
 
 O SmartFinance é um agente de IA integrado ao Azure AI Foundry capaz de:
 
@@ -14,7 +14,7 @@ O diferencial deste projeto é a arquitetura moderna usando um MCP Server dentro
 
 ---
 
-🎯 **Objetivo**
+## 🎯 **Objetivo**
 
 Criar um agente inteligente para gestão de finanças pessoais com:
 
@@ -25,12 +25,12 @@ Criar um agente inteligente para gestão de finanças pessoais com:
 
 ---
 
-⚙️ **Arquitetura da Solução**
+## ⚙️ **Arquitetura da Solução**
 
 Usuário → Azure AI Foundry Agent → MCP Server (APIM)  
 → Azure Functions → Azure SQL Database → Azure AI Search
 
-**Componentes utilizados**
+### **Componentes utilizados**
 
 | Serviço | Função |
 | --- | --- |
@@ -43,7 +43,7 @@ Usuário → Azure AI Foundry Agent → MCP Server (APIM)
 
 ---
 
-🚀 **Funcionalidades do Agente**
+## 🚀 **Funcionalidades do Agente**
 
 - ✓ Registrar transações no banco  
     Exemplo: “Gastei 50 reais no supermercado ontem”
@@ -61,7 +61,7 @@ Usuário → Azure AI Foundry Agent → MCP Server (APIM)
 
 ---
 
-✨ **Resultado dentro do Foundry**
+## ✨ **Resultado dentro do Foundry**
 
 **Registro de transação**  
 Entrada: “Gastei 40 reais no supermercado hoje.”  
@@ -75,7 +75,7 @@ Saída de exemplo:
 
 ---
 
-🧩 **Fluxo de Execução do MCP Server**
+## 🧩 **Fluxo de Execução do MCP Server**
 
 1. O agente detecta a intenção do usuário.  
 2. Chama o MCP Server (APIM) configurado como ferramenta.  
@@ -85,9 +85,9 @@ Saída de exemplo:
 
 ---
 
-🛠 **Configuração das Ferramentas**
+## 🛠 **Configuração das Ferramentas**
 
-1) **Azure Functions**  
+### 1) **Azure Functions**  
 - Deploy no Function App: `mcp-smartfinance`  
 - Tools MCP:
     - `getTransactions`
@@ -102,7 +102,7 @@ def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
         # processa payload e grava no banco
 ```
 
-2) **API Management como MCP Server**  
+### 2) **API Management como MCP Server**  
 - Importar Function App no APIM:  
     Function App → API Management → Import as API  
 - Criar MCP Server:  
@@ -111,13 +111,13 @@ def process_transaction(req: func.HttpRequest) -> func.HttpResponse:
     - Sem subscription key
     - Sem aprovação manual
 
-3) **Agente no Azure AI Foundry**  
+### 3) **Agente no Azure AI Foundry**  
 - Adicionar ferramenta MCP no agente:  
     Tools → Add tool → MCP Server → `mcp-smartfinance`
 
 ---
 
-🧪 **Exemplo real de chamada funcional**
+## 🧪 **Exemplo real de chamada funcional**
 
 Entrada do usuário:  
 > gastei 40 reais no supermercado hoje
@@ -132,7 +132,7 @@ Resposta ao usuário:
 
 ---
 
-🔧 **Requisitos para rodar**
+## 🔧 **Requisitos para rodar**
 
 - Conta Azure ativa  
 - Azure AI Foundry habilitado  
@@ -145,7 +145,7 @@ Para conferir como recriar, confira o [passo a passo](/passos/config)
 
 ---
 
-📚 **Referências Oficiais**
+## 📚 **Referências Oficiais**
 
 - Azure AI Foundry — [Documentação do Azure AI Studio (Foundry)](https://learn.microsoft.com/azure/ai-studio/)
 - MCP / Agents — [Guia de Agents e MCP no Azure AI Studio](https://learn.microsoft.com/azure/ai-studio/agents/)
@@ -156,7 +156,7 @@ Para conferir como recriar, confira o [passo a passo](/passos/config)
 
 ---
 
-✔️ **O que já está funcional**
+## ✔️ **O que já está funcional**
 
 - Consultas de gastos via agente  
 - Registros de transações no SQL  
@@ -164,7 +164,7 @@ Para conferir como recriar, confira o [passo a passo](/passos/config)
 - MCP Server integrado com Functions  
 - Agente responde a comandos e calcula valores
 
-📌 **Próximos passos (opcionais)**
+## 📌 **Próximos passos (opcionais)**
 
 - Criar interface web ou integração com WhatsApp  
 - Criar pipeline com Power Automate  
@@ -173,6 +173,6 @@ Para conferir como recriar, confira o [passo a passo](/passos/config)
 
 ---
 
-🏁 **Conclusão**
+## 🏁 **Conclusão**
 
 Este projeto demonstra uma aplicação completa de IA generativa integrada ao Azure, com capacidade real de leitura e escrita de dados através de um MCP Server exposto via API Management, Azure Functions, SQL e Azure AI Search — permitindo automação e conversas naturais úteis para gestão financeira pessoal.
