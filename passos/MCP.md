@@ -1,14 +1,6 @@
 # MCP — Passos de Configuração
 
-## 1️⃣ Criar o Azure Functions (mcp-smartfinance)
-Você desenvolveu os métodos no `function_app.py` e fez deploy no Azure.
 
-Functions incluídas:
-- ProcessTransaction
-- GetTransactions
-- AgentWebhook
-- HealthCheck
-- MCPMetadata
 
 ## 2️⃣ Configurar o API Management
 ### ✔ Criar API Management

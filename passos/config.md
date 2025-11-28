@@ -30,7 +30,7 @@ Fluxo completo:
 
 ## ✔️ Pré-requisitos
 
-- Conta Azure
+- Conta Azure (aqui usamos a conta trial, uma vez que a de estudante não habilitava o deploy do modelo que usamos)
 - Azure AI Foundry habilitado
 - Acesso ao Portal Azure
 - VS Code (para deploy Functions)
@@ -39,7 +39,7 @@ Fluxo completo:
 
 ---
 
-# 🏗 PASSO A PASSO
+# PASSO A PASSO
 
 ---
 
@@ -47,11 +47,11 @@ Fluxo completo:
 
 Portal Azure → **Resource Groups → Create**
 
-- Nome: `rg-smartfinance`
-- Região: a mesma dos outros recursos
+- Nome: `rg-azure-foundry`
+- Região: US East 2
 
 **Print:**
-![screenshot-01-create-rg]()
+![/imagens/resourcegroup]()
 
 ---
 
@@ -61,11 +61,12 @@ Portal → **Azure SQL → Single database**
 
 - Server: `smartfinance-server`
 - Database: `finance-db`
-- Firewall: habilitar *Allow Azure services*
+- Firewall: habilitar *Allow Azure services* + *Adicionar o endereço0 de IPv4 do cliente*
 
 **Print:**
-![screenshot-02-create-sql]()
-
+![/imagens/azuresqldatabase-1]()
+![/imagens/azuresqldatabase-2]()
+![/imagens/azuresqldatabase-3]()
 ---
 
 ## 3️⃣ Criar Storage Account
