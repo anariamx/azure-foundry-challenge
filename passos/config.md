@@ -64,9 +64,9 @@ Portal → **Azure SQL → Single database**
 - Firewall: habilitar *Allow Azure services* + *Adicionar o endereço0 de IPv4 do cliente*
 
 **Print:**
-![/imagens/azuresqldatabase-1.png]()
-![/imagens/azuresqldatabase-2.png]()
-![/imagens/azuresqldatabase-3.png]()
+![passos/imagens/azuresqldatabase-1.png]()
+![passos/imagens/azuresqldatabase-2.png]()
+![passos/imagens/azuresqldatabase-3.png]()
 ---
 
 ## 3️⃣ Criar Storage Account
