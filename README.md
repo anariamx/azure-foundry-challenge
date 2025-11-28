@@ -141,7 +141,7 @@ Resposta ao usuário:
 - Azure SQL Database para armazenamento  
 - Azure AI Search com index e datasource configurados
 
-Para conferir como recriar, confira o [passo a passo](/passos/config)
+Para conferir como recriar, confira o [passo a passo](/passos/config.md)
 
 ---
 
